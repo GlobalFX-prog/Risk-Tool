@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Foreign Exchange Risk Assessment</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #050505;
+            background-image: 
+                linear-gradient(rgba(255, 140, 0, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 140, 0, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            color: #fff3e0;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Scanline animation effect */
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(10, 15, 25, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 0 30px rgba(255, 140, 0, 0.1);
+            border: 1px solid rgba(255, 140, 0, 0.3);
+        }
+
+        .glow-animation {
+            animation: orangePulse 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes orangePulse {
+            0% {
+                box-shadow: 0 0 15px rgba(255, 140, 0, 0.2), inset 0 0 20px rgba(255, 140, 0, 0.05);
+                border-color: rgba(255, 140, 0, 0.3);
+            }
+            100% {
+                box-shadow: 0 0 35px rgba(255, 140, 0, 0.4), inset 0 0 30px rgba(255, 140, 0, 0.1);
+                border-color: rgba(255, 140, 0, 0.6);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 140, 0, 0.3);
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 3px;
+            background: #ff8c00;
+            box-shadow: 0 0 15px #ff8c00;
+        }
+
+        .main-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 0 10px #ff8c00, 0 0 20px #ff8c00, 0 0 40px #ff8c00;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .sub-title {
+            font-size: 1.4rem;
+            color: #b0bec5;
+            font-weight: 400;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .client-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: rgba(0, 20, 40, 0.4);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 140, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .client-info::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 140, 0, 0.1), transparent);
+            animation: scan 6s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 200%; }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 2;
+        }
+
+        .form-group label {
+            color: #ff8c00;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .form-group input, .form-group select {
+            padding: 12px 15px;
+            border: 1px solid rgba(255, 140, 0, 0.3);
+            border-radius: 4px;
+            background: rgba(0, 10, 20, 0.6);
+            color: #ffffff;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #ff4500;
+            box-shadow: 0 0 15px rgba(255, 69, 0, 0.4);
+            background: rgba(30, 15, 0, 0.6);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.1);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: -1;
+        }
+
+        .btn:hover::before {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: transparent;
+            color: #ff8c00;
+            border: 1px solid #ff8c00;
+            box-shadow: 0 0 10px rgba(255, 140, 0, 0.2), inset 0 0 10px rgba(255, 140, 0, 0.1);
+        }
+
+        .btn-primary:hover {
+            background: rgba(255, 140, 0, 0.1);
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.5), inset 0 0 15px rgba(255, 140, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #ff4500;
+            border: 1px solid #ff4500;
+            box-shadow: 0 0 10px rgba(255, 69, 0, 0.2), inset 0 0 10px rgba(255, 69, 0, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 69, 0, 0.1);
+            box-shadow: 0 0 20px rgba(255, 69, 0, 0.5), inset 0 0 15px rgba(255, 69, 0, 0.3);
+        }
+
+        .btn-success {
+            background: transparent;
+            color: #0f0;
+            border: 1px solid #0f0;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.2), inset 0 0 10px rgba(0, 255, 0, 0.1);
+        }
+
+        .btn-success:hover {
+            background: rgba(0, 255, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5), inset 0 0 15px rgba(0, 255, 0, 0.3);
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: #ff003c;
+            border: 1px solid #ff003c;
+            box-shadow: 0 0 10px rgba(255, 0, 60, 0.2), inset 0 0 10px rgba(255, 0, 60, 0.1);
+        }
+
+        .btn-danger:hover {
+            background: rgba(255, 0, 60, 0.1);
+            box-shadow: 0 0 20px rgba(255, 0, 60, 0.5), inset 0 0 15px rgba(255, 0, 60, 0.3);
+        }
+
+        .risk-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+            margin-bottom: 30px;
+        }
+
+        .risk-table th {
+            background: rgba(255, 140, 0, 0.1);
+            color: #ff8c00;
+            padding: 18px 15px;
+            text-align: left;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            border-top: 1px solid #ff8c00;
+            border-bottom: 1px solid #ff8c00;
+            font-size: 0.9rem;
+        }
+
+        .risk-table td {
+            background: rgba(10, 15, 25, 0.6);
+            padding: 15px;
+            border-top: 1px solid rgba(255, 140, 0, 0.1);
+            border-bottom: 1px solid rgba(255, 140, 0, 0.1);
+            vertical-align: middle;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
+        }
+
+        .risk-table tr td:first-child {
+            border-left: 1px solid rgba(255, 140, 0, 0.1);
+            border-top-left-radius: 4px;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .risk-table tr td:last-child {
+            border-right: 1px solid rgba(255, 140, 0, 0.1);
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+
+        .risk-table tr:hover td {
+            background: rgba(255, 140, 0, 0.05);
+            border-color: rgba(255, 140, 0, 0.4);
+            box-shadow: 0 0 10px rgba(255, 140, 0, 0.1) inset;
+        }
+
+        .risk-table select, .risk-table input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid rgba(255, 140, 0, 0.3);
+            border-radius: 4px;
+            background: rgba(0, 10, 20, 0.8);
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .risk-table select:focus, .risk-table input:focus {
+            outline: none;
+            border-color: #ff4500;
+            box-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
+        }
+
+        .settings-btn {
+            background: transparent;
+            border: 1px solid #ff4500;
+            color: #ff4500;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-family: 'Orbitron', sans-serif;
+            margin-left: 10px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        .settings-btn:hover {
+            background: rgba(255, 69, 0, 0.15);
+            box-shadow: 0 0 10px rgba(255, 69, 0, 0.4);
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .summary-card {
+            background: linear-gradient(145deg, rgba(10, 15, 25, 0.9), rgba(5, 10, 15, 0.9));
+            padding: 25px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid rgba(255, 140, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .summary-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, #ff8c00, transparent);
+        }
+
+        .summary-card h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: #b0bec5;
+            margin-bottom: 15px;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .summary-card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: #0a0f19;
+            margin: 5% auto;
+            padding: 40px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 650px;
+            border: 1px solid #ff4500;
+            box-shadow: 0 0 40px rgba(255, 69, 0, 0.2);
+            position: relative;
+        }
+
+        .close {
+            color: #ff4500;
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .close:hover {
+            color: #fff;
+            text-shadow: 0 0 10px #ff4500;
+        }
+
+        .dropdown-options {
+            margin-top: 20px;
+        }
+
+        .dropdown-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            margin: 8px 0;
+            background: rgba(20, 30, 45, 0.5);
+            border-radius: 4px;
+            border: 1px solid rgba(255, 140, 0, 0.2);
+            font-size: 1.1rem;
+        }
+
+        .add-option-form {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px dashed rgba(255, 140, 0, 0.3);
+        }
+
+        .add-option-form input {
+            flex: 1;
+        }
+
+        .risk-level-low { color: #0f0 !important; text-shadow: 0 0 15px rgba(0, 255, 0, 0.5) !important; }
+        .risk-level-medium { color: #ffeb3b !important; text-shadow: 0 0 15px rgba(255, 235, 59, 0.5) !important; }
+        .risk-level-high { color: #ff003c !important; text-shadow: 0 0 15px rgba(255, 0, 60, 0.5) !important; }
+        .risk-level-critical { color: #8a0303 !important; text-shadow: 0 0 15px rgba(255, 0, 0, 0.8) !important; }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .main-title { font-size: 1.8rem; }
+            .controls { justify-content: stretch; }
+            .controls .btn { flex: 1; min-width: 120px; }
+            .risk-table th { display: none; }
+            .risk-table td { display: block; width: 100%; border: none !important; border-bottom: 1px solid rgba(0,243,255,0.1) !important; }
+            .risk-table tr { margin-bottom: 15px; display: block; border: 1px solid rgba(0,243,255,0.3); border-radius: 4px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container glow-animation">
+        <div class="header">
+            <h1 class="main-title">Global Foreign Exchange</h1>
+            <h2 class="sub-title">Risk Assessment Protocol</h2>
+        </div>
+
+        <div class="client-info">
+            <div class="form-group">
+                <label for="clientName">Entity Designation</label>
+                <input type="text" id="clientName" placeholder="Enter client/entity name">
+            </div>
+            <div class="form-group">
+                <label for="assessmentDate">Timestamp</label>
+                <input type="date" id="assessmentDate">
+            </div>
+            <div class="form-group">
+                <label for="facilityAmount">Capital Allocation</label>
+                <input type="text" id="facilityAmount" placeholder="Enter facility amount">
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="editBtn">Initialize Override</button>
+            <button class="btn btn-success hidden" id="saveBtn">Commit Changes</button>
+            <button class="btn btn-secondary hidden" id="cancelBtn">Abort Sequence</button>
+            <button class="btn btn-secondary" id="addFactorBtn">Add Risk Vector</button>
+            <button class="btn btn-primary" id="exportBtn">Download PDF Record</button>
+        </div>
+
+        <table class="risk-table" id="riskTable">
+            <thead>
+                <tr>
+                    <th>Risk Vector</th>
+                    <th>Telemetry Input</th>
+                    <th>Threat Score</th>
+                    <th>Mass/Weight</th>
+                    <th>Calculated Impact</th>
+                </tr>
+            </thead>
+            <tbody id="riskTableBody">
+                </tbody>
+        </table>
+
+        <div class="summary">
+            <div class="summary-card">
+                <h3>Systemic Impact Score</h3>
+                <div class="value" id="totalScore">0.00</div>
+            </div>
+            <div class="summary-card">
+                <h3>Threat Level</h3>
+                <div class="value" id="riskLevel">SECURE</div>
+            </div>
+            <div class="summary-card">
+                <h3>Probability Index</h3>
+                <div class="value" id="riskPercentage">0.0%</div>
+            </div>
+            <div class="summary-card">
+                <h3>Clearance Requirement</h3>
+                <div class="value" id="dueDiligence">SDD</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 style="color: #ff4500; font-family: 'Orbitron', sans-serif; margin-bottom: 25px; text-transform: uppercase;">Vector Configuration</h2>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label for="factorName">Vector Designation</label>
+                <input type="text" id="factorName">
+            </div>
+            <div class="form-group">
+                <label>Data Arrays (Options)</label>
+                <div id="dropdownOptions" class="dropdown-options">
+                    </div>
+                <div class="add-option-form">
+                    <input type="text" id="newOptionText" placeholder="Array text description">
+                    <input type="number" id="newOptionScore" placeholder="Lvl" min="1" max="5" style="max-width: 80px;">
+                    <button class="btn btn-secondary" id="addOptionBtn">Inject Data</button>
+                </div>
+            </div>
+            <div style="margin-top: 35px; display: flex; justify-content: space-between;">
+                <button class="btn btn-danger" id="deleteFactorBtn">Purge Vector</button>
+                <button class="btn btn-success" id="saveSettingsBtn">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+       // --- SUPABASE CONFIGURATION ---
+        const SB_URL = "https://sptkmyxxauvhesywrfir.supabase.co";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwdGtteXh4YXV2aGVzeXdyZmlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDcwMDAsImV4cCI6MjA5MjMyMzAwMH0.jC-qofWJO8JcDsNaSFZatM7EPNC9qAqTFIuzJQ05dW0";
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+        // Global variables
+        let isEditMode = false;
+        let currentEditingFactor = null;
+        let riskFactors = [];
+        
+        // --- SAVE TO CLOUD FUNCTION ---
+        async function commitToSupabase() {
+            const saveBtn = document.getElementById('saveBtn');
+            const originalText = saveBtn.innerText;
+            
+            try {
+                saveBtn.innerText = "UPLOADING...";
+                saveBtn.disabled = true;
+
+                const payload = {
+                    client_name: document.getElementById('clientName').value,
+                    assessment_date: document.getElementById('assessmentDate').value,
+                    facility_amount: document.getElementById('facilityAmount').value,
+                    total_score: parseFloat(document.getElementById('totalScore').textContent),
+                    risk_factors: riskFactors // This saves the entire array as JSON
+                };
+
+                const { data, error } = await supabaseClient
+                    .from('risk_assessments')
+                    .insert([payload]);
+
+                if (error) throw error;
+
+                alert("PROTOCOL COMMITTED: Data successfully synced to cloud.");
+            } catch (err) {
+                console.error("Transmission Error:", err);
+                alert("CRITICAL ERROR: Failed to sync with Supabase. Check console. Ensuring local storage save.");
+            } finally {
+                saveBtn.innerText = originalText;
+                saveBtn.disabled = false;
+            }
+        }
+
+        // Default risk factors
+        const defaultRiskFactors = [
+            {
+                id: 1,
+                name: "Facility Amount",
+                options: [
+                    { text: "Under $100K", score: 1 },
+                    { text: "$100K - $500K", score: 2 },
+                    { text: "$500K - $1M", score: 3 },
+                    { text: "$1M - $5M", score: 4 },
+                    { text: "Over $5M", score: 5 }
+                ],
+                selectedOption: 0,
+                customRiskScore: null,
+                weight: 0.08
+            },
+            {
+                id: 2,
+                name: "Nature of Business Relationship",
+                options: [
+                    { text: "Existing Client", score: 1 },
+                    { text: "New Client - Referral", score: 2 },
+                    { text: "New Client - Direct", score: 3 },
+                    { text: "Complex Structure", score: 4 },
+                    { text: "High Risk Entity", score: 5 }
+                ],
+                selectedOption: 0,
+                customRiskScore: null,
+                weight: 0.03
+            },
+            {
+                id: 3,
+                name: "Company Operating History",
+                options: [
+                    { text: "Over 5 years", score: 1 },
+                    { text: "3-5 years", score: 2 },
+                    { text: "1-3 years", score: 3 },
+                    { text: "6 months - 1 year", score: 4 },
+                    { text: "Under 6 months", score: 5 }
+                ],
+                selectedOption: 0,
+                customRiskScore: null,
+                weight: 0.03
+            },
+            {
+                id: 4,
+                name: "Legal Entity Type",
+                options: [
+                    { text: "Public Company", score: 1 },
+                    { text: "Private Company", score: 2 },
+                    { text: "Partnership", score: 3 },
+                    { text: "Trust", score: 4 },
+                    { text: "Offshore Entity", score: 5 }
+                ],
+                selectedOption: 1,
+                customRiskScore: null,
+                weight: 0.05
+            },
+            {
+                id: 5,
+                name: "Industry / Sector Risk",
+                options: [
+                    { text: "Low Risk Industry", score: 1 },
+                    { text: "Medium Risk Industry", score: 2 },
+                    { text: "High Risk Industry", score: 3 },
+                    { text: "Cash Intensive Business", score: 4 },
+                    { text: "Prohibited Industry", score: 5 }
+                ],
+                selectedOption: 0,
+                customRiskScore: null,
+                weight: 0.05
+            },
+            {
+                id: 6,
+                name: "Travel Destination Risk",
+                options: [
+                    { text: "Low Risk Countries", score: 1 },
+                    { text: "Medium Risk Countries", score: 2 },
+                    { text: "High Risk Countries", score: 3 },
+                    { text: "Sanctioned Countries", score: 4 },
+                    { text: "Prohibited Destinations", score: 5 }
+                ],
+                selectedOption: 1,
+                customRiskScore: null,
+                weight: 0.08
+            },
+            {
+                id: 7,
+                name: "Sanctions & Whitelist Checks",
+                options: [
+                    { text: "Clear - No Matches", score: 1 },
+                    { text: "Potential Match - Cleared", score: 2 },
+                    { text: "Requires Investigation", score: 3 },
+                    { text: "Positive Match - Mitigated", score: 4 },
+                    { text: "Positive Match - Prohibited", score: 5 }
+                ],
+                selectedOption: 0,
+                customRiskScore: null,
+                weight: 0.25
+            },
+            {
+                id: 8,
+                name: "Politically Exposed Persons (PEPs)",
+                options: [
+                    { text: "No PEP Exposure", score: 1 },
+                    { text: "Family Member of PEP", score: 2 },
+                    { text: "Close Associate of PEP", score: 3 },
+                    { text: "Domestic PEP", score: 4 },
+                    { text: "Foreign PEP", score: 5 }
+                ],
+                selectedOption: 0,
+                customRiskScore: null,
+                weight: 0.25
+            },
+            {
+                id: 9,
+                name: "Negative Media & Reputation",
+                options: [
+                    { text: "No Adverse Media", score: 1 },
+                    { text: "Minor Negative Coverage", score: 2 },
+                    { text: "Moderate Concerns", score: 3 },
+                    { text: "Significant Issues", score: 4 },
+                    { text: "Major Scandals", score: 5 }
+                ],
+                selectedOption: 0,
+                customRiskScore: null,
+                weight: 0.10
+            },
+            {
+                id: 10,
+                name: "UBO Transparency",
+                options: [
+                    { text: "Fully Transparent", score: 1 },
+                    { text: "Mostly Clear", score: 2 },
+                    { text: "Some Complexity", score: 3 },
+                    { text: "Limited Transparency", score: 4 },
+                    { text: "Opaque Structure", score: 5 }
+                ],
+                selectedOption: 0,
+                customRiskScore: null,
+                weight: 0.10
+            },
+            {
+                id: 11,
+                name: "Ownership Structure Complexity",
+                options: [
+                    { text: "Simple Structure", score: 1 },
+                    { text: "Moderate Complexity", score: 2 },
+                    { text: "Complex Structure", score: 3 },
+                    { text: "Multi-layered", score: 4 },
+                    { text: "Highly Complex", score: 5 }
+                ],
+                selectedOption: 0,
+                customRiskScore: null,
+                weight: 0.05
+            }
+        ];
+
+        // Initialize the application
+        function init() {
+            loadData();
+            renderTable();
+            updateSummary();
+            setupEventListeners();
+            
+            // Set current date if empty
+            if (!document.getElementById('assessmentDate').value) {
+                document.getElementById('assessmentDate').value = new Date().toISOString().split('T')[0];
+            }
+        }
+
+        // Load data from localStorage or use defaults
+        function loadData() {
+            const savedData = localStorage.getItem('forexRiskAssessmentData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                riskFactors = data.riskFactors || defaultRiskFactors;
+                
+                // Load client info
+                if (data.clientInfo) {
+                    document.getElementById('clientName').value = data.clientInfo.clientName || '';
+                    document.getElementById('assessmentDate').value = data.clientInfo.assessmentDate || new Date().toISOString().split('T')[0];
+                    document.getElementById('facilityAmount').value = data.clientInfo.facilityAmount || '';
+                }
+            } else {
+                riskFactors = JSON.parse(JSON.stringify(defaultRiskFactors)); // deep copy
+            }
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            const data = {
+                riskFactors: riskFactors,
+                clientInfo: {
+                    clientName: document.getElementById('clientName').value,
+                    assessmentDate: document.getElementById('assessmentDate').value,
+                    facilityAmount: document.getElementById('facilityAmount').value
+                }
+            };
+            localStorage.setItem('forexRiskAssessmentData', JSON.stringify(data));
+        }
+
+        // Render the risk factors table
+        function renderTable() {
+            const tbody = document.getElementById('riskTableBody');
+            tbody.innerHTML = '';
+
+            riskFactors.forEach((factor, index) => {
+                const row = document.createElement('tr');
+                const selectedOption = factor.options[factor.selectedOption] || factor.options[0];
+                const currentRiskScore = factor.customRiskScore !== null ? factor.customRiskScore : selectedOption.score;
+                
+                row.innerHTML = `
+                    <td style="font-weight: 600;">${factor.name}</td>
+                    <td>
+                        <select onchange="updateFactorOption(${index}, this.value); saveData();">
+                            ${factor.options.map((option, optIndex) => 
+                                `<option value="${optIndex}" ${optIndex === factor.selectedOption ? 'selected' : ''}>${option.text}</option>`
+                            ).join('')}
+                        </select>
+                    </td>
+                    <td>
+                        <select onchange="updateRiskScore(${index}, this.value); saveData();">
+                            <option value="1" ${currentRiskScore === 1 ? 'selected' : ''}>1 - MINIMAL</option>
+                            <option value="2" ${currentRiskScore === 2 ? 'selected' : ''}>2 - ELEVATED</option>
+                            <option value="3" ${currentRiskScore === 3 ? 'selected' : ''}>3 - MODERATE</option>
+                            <option value="4" ${currentRiskScore === 4 ? 'selected' : ''}>4 - SEVERE</option>
+                            <option value="5" ${currentRiskScore === 5 ? 'selected' : ''}>5 - CRITICAL</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" min="0" max="1" value="${factor.weight}" 
+                               ${!isEditMode ? 'disabled' : ''} onchange="updateFactorWeight(${index}, this.value)">
+                    </td>
+                    <td style="font-family: 'Orbitron', sans-serif; font-weight: bold; color: #ff8c00;">
+                        ${(currentRiskScore * factor.weight).toFixed(2)}
+                        ${isEditMode ? `<button class="settings-btn" onclick="openSettings(${index})">CONFIG</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Regulatory auto-escalation: certain selections force the threat score to HIGH (5)
+        function applyAutoRiskEscalation(factor) {
+            const selectedOption = factor.options[factor.selectedOption];
+            if (!selectedOption) return;
+
+            if (factor.name === "Politically Exposed Persons (PEPs)" &&
+                selectedOption.text !== "No PEP Exposure") {
+                factor.customRiskScore = 5;
+                return;
+            }
+            if (factor.name === "Sanctions & Whitelist Checks" &&
+                selectedOption.text === "Positive Match - Prohibited") {
+                factor.customRiskScore = 5;
+            }
+        }
+
+        // Input Modifiers
+        function updateFactorOption(factorIndex, optionIndex) {
+            const factor = riskFactors[factorIndex];
+            factor.selectedOption = parseInt(optionIndex);
+            factor.customRiskScore = null;
+            applyAutoRiskEscalation(factor);
+            renderTable();
+            updateSummary();
+        }
+
+        function updateRiskScore(factorIndex, score) {
+            riskFactors[factorIndex].customRiskScore = parseInt(score);
+            renderTable();
+            updateSummary();
+        }
+
+        function updateFactorWeight(factorIndex, weight) {
+            riskFactors[factorIndex].weight = parseFloat(weight);
+            renderTable();
+            updateSummary();
+        }
+
+        // Calculate and Update Summary Math and UI
+        function updateSummary() {
+            let totalScore = 0;
+            riskFactors.forEach(factor => {
+                const selectedOption = factor.options[factor.selectedOption] || factor.options[0];
+                const currentRiskScore = factor.customRiskScore !== null ? factor.customRiskScore : selectedOption.score;
+                totalScore += currentRiskScore * factor.weight;
+            });
+
+            // Update UI Elements
+            const scoreElement = document.getElementById('totalScore');
+            const levelElement = document.getElementById('riskLevel');
+            const percentageElement = document.getElementById('riskPercentage');
+            const diligenceElement = document.getElementById('dueDiligence');
+
+            // Reset Classes
+            scoreElement.className = 'value';
+            levelElement.className = 'value';
+
+            // Format Systemic Impact Score
+            scoreElement.innerText = totalScore.toFixed(2);
+            
+            // Format Percentage Base (Max Score is 5)
+            const riskPercentage = ((totalScore / 5) * 100).toFixed(1);
+            percentageElement.innerText = `${riskPercentage}%`;
+
+            // Tier Evaluation Logic
+            if (totalScore <= 2.0) {
+                levelElement.innerText = 'SECURE (LOW)';
+                levelElement.classList.add('risk-level-low');
+                scoreElement.classList.add('risk-level-low');
+                diligenceElement.innerText = 'Standard (SDD)';
+            } else if (totalScore <= 3.5) {
+                levelElement.innerText = 'ELEVATED (MED)';
+                levelElement.classList.add('risk-level-medium');
+                scoreElement.classList.add('risk-level-medium');
+                diligenceElement.innerText = 'Enhanced (EDD)';
+            } else if (totalScore <= 4.5) {
+                levelElement.innerText = 'THREAT (HIGH)';
+                levelElement.classList.add('risk-level-high');
+                scoreElement.classList.add('risk-level-high');
+                diligenceElement.innerText = 'Extreme (XDD)';
+            } else {
+                levelElement.innerText = 'CRITICAL ALERT';
+                levelElement.classList.add('risk-level-critical');
+                scoreElement.classList.add('risk-level-critical');
+                diligenceElement.innerText = 'Immediate Rejection / Escalation';
+            }
+        }
+
+        // Modal Functionality
+        const modal = document.getElementById('settingsModal');
+        const span = document.getElementsByClassName('close')[0];
+
+        span.onclick = function() { modal.style.display = "none"; }
+        window.onclick = function(event) { if (event.target == modal) { modal.style.display = "none"; } }
+
+        function openSettings(index) {
+            currentEditingFactor = index;
+            const factor = riskFactors[index];
+            document.getElementById('factorName').value = factor.name;
+            renderModalOptions();
+            modal.style.display = "block";
+        }
+
+        function renderModalOptions() {
+            if (currentEditingFactor === null) return;
+            const factor = riskFactors[currentEditingFactor];
+            const optionsDiv = document.getElementById('dropdownOptions');
+            optionsDiv.innerHTML = '';
+            
+            factor.options.forEach((opt, idx) => {
+                const optDiv = document.createElement('div');
+                optDiv.className = 'dropdown-option';
+                optDiv.innerHTML = `
+                    <span>${opt.text} <span style="color:#ff8c00; margin-left: 10px;">(Lvl ${opt.score})</span></span>
+                    <button class="settings-btn" onclick="removeOption(${idx})" style="color: #ff003c; border-color: #ff003c;">DEL</button>
+                `;
+                optionsDiv.appendChild(optDiv);
+            });
+        }
+
+        function removeOption(optIndex) {
+            if (currentEditingFactor === null) return;
+            riskFactors[currentEditingFactor].options.splice(optIndex, 1);
+            if (riskFactors[currentEditingFactor].selectedOption >= riskFactors[currentEditingFactor].options.length) {
+                riskFactors[currentEditingFactor].selectedOption = 0; // Reset index if out of bounds
+            }
+            renderModalOptions();
+        }
+
+        // Application Event Listeners
+        function setupEventListeners() {
+            document.getElementById('editBtn').addEventListener('click', () => {
+                isEditMode = true;
+                document.getElementById('editBtn').classList.add('hidden');
+                document.getElementById('saveBtn').classList.remove('hidden');
+                document.getElementById('cancelBtn').classList.remove('hidden');
+                renderTable();
+            });
+
+            document.getElementById('cancelBtn').addEventListener('click', () => {
+                isEditMode = false;
+                loadData(); // Revert back to locally saved state
+                document.getElementById('editBtn').classList.remove('hidden');
+                document.getElementById('saveBtn').classList.add('hidden');
+                document.getElementById('cancelBtn').classList.add('hidden');
+                renderTable();
+                updateSummary();
+            });
+
+            document.getElementById('saveBtn').addEventListener('click', () => {
+                isEditMode = false;
+                document.getElementById('editBtn').classList.remove('hidden');
+                document.getElementById('saveBtn').classList.add('hidden');
+                document.getElementById('cancelBtn').classList.add('hidden');
+                
+                saveData();
+                renderTable();
+                updateSummary();
+                commitToSupabase(); // Fire payload injection to cloud
+            });
+
+            document.getElementById('addFactorBtn').addEventListener('click', () => {
+                const newFactor = {
+                    id: Date.now(),
+                    name: "New Custom Vector",
+                    options: [
+                        { text: "Standard Parameters", score: 1 }
+                    ],
+                    selectedOption: 0,
+                    customRiskScore: null,
+                    weight: 0.05
+                };
+                riskFactors.push(newFactor);
+                isEditMode = true;
+                
+                // Jump straight into edit mode context
+                document.getElementById('editBtn').classList.add('hidden');
+                document.getElementById('saveBtn').classList.remove('hidden');
+                document.getElementById('cancelBtn').classList.remove('hidden');
+                
+                renderTable();
+                updateSummary();
+                openSettings(riskFactors.length - 1); // Open the modal for the new vector
+            });
+
+            // Modal Input Actions
+            document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+                if (currentEditingFactor !== null) {
+                    riskFactors[currentEditingFactor].name = document.getElementById('factorName').value;
+                    saveData();
+                    renderTable();
+                    modal.style.display = "none";
+                }
+            });
+
+            document.getElementById('deleteFactorBtn').addEventListener('click', () => {
+                if (currentEditingFactor !== null && confirm('WARNING: Are you sure you want to permanently purge this Vector?')) {
+                    riskFactors.splice(currentEditingFactor, 1);
+                    saveData();
+                    renderTable();
+                    updateSummary();
+                    modal.style.display = "none";
+                }
+            });
+
+            document.getElementById('addOptionBtn').addEventListener('click', () => {
+                if (currentEditingFactor === null) return;
+                const textInput = document.getElementById('newOptionText');
+                const scoreInput = document.getElementById('newOptionScore');
+                
+                if (textInput.value && scoreInput.value) {
+                    riskFactors[currentEditingFactor].options.push({
+                        text: textInput.value,
+                        score: parseInt(scoreInput.value)
+                    });
+                    textInput.value = '';
+                    scoreInput.value = '';
+                    renderModalOptions();
+                } else {
+                    alert("Syntax Error: Provide both a text description and a score (1-5).");
+                }
+            });
+
+            // Auto-Save listeners for the header data
+            document.getElementById('clientName').addEventListener('change', saveData);
+            document.getElementById('assessmentDate').addEventListener('change', saveData);
+            document.getElementById('facilityAmount').addEventListener('change', saveData);
+
+            // PDF Generation
+            document.getElementById('exportBtn').addEventListener('click', async () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+                const container = document.querySelector('.container');
+                const controls = document.querySelector('.controls');
+                
+                // Pre-flight UI formatting for cleaner print
+                controls.style.display = 'none';
+                container.style.boxShadow = 'none';
+                container.style.border = 'none';
+                document.body.style.background = '#050505';
+                
+                try {
+                    const canvas = await html2canvas(container, {
+                        backgroundColor: '#050505',
+                        scale: 1.5 // Resolution scale
+                    });
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                    const pdfWidth = doc.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    
+                    doc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                    const clientName = document.getElementById('clientName').value || 'Unknown_Entity';
+                    doc.save(`FX_Threat_Protocol_${clientName.replace(/\s+/g, '_')}.pdf`);
+                } catch (err) {
+                    console.error("PDF Compilation Failed:", err);
+                    alert("System Error: Failed to generate PDF document.");
+                } finally {
+                    // Restore UI aesthetics
+                    controls.style.display = 'flex';
+                    container.style.boxShadow = '';
+                    container.style.border = '';
+                    document.body.style.background = '';
+                }
+            });
+        }
+
+        // Initialize script logic
+        window.onload = init;
+    </script>
+</body>
+</html>
