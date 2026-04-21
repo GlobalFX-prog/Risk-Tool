@@ -571,8 +571,62 @@
         let isEditMode = false;
         let currentEditingFactor = null;
         let riskFactors = [];
-        
-        // --- SAVE TO CLOUD FUNCTION ---
+
+        // --- CLOUD SYNC FUNCTIONS ---
+        async function loadFromSupabase() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('risk_assessments')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                // If there's an error or no data, use local storage/defaults
+                if (error || !data || !data.risk_factors) {
+                    console.log("No cloud data found. Using local/default vectors.");
+                    loadData(); 
+                    return;
+                }
+
+                // If we found data, ensure it's a valid array before assigning
+                if (Array.isArray(data.risk_factors) && data.risk_factors.length > 0) {
+                    riskFactors = data.risk_factors;
+                    document.getElementById('clientName').value = data.client_name || '';
+                    document.getElementById('assessmentDate').value = data.assessment_date || '';
+                    document.getElementById('facilityAmount').value = data.facility_amount || '';
+                    console.log("Protocol Sync: Cloud data successfully merged.");
+                } else {
+                    loadData();
+                }
+            } catch (err) {
+                console.warn("Sync Warning: Falling back to local storage.", err);
+                loadData();
+            }
+        }
+
+        function subscribeToChanges() {
+            supabaseClient
+                .channel('global-risk-sync')
+                .on(
+                    'postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'risk_assessments' },
+                    (payload) => {
+                        console.log('Inbound Update Detected:', payload.new);
+                        // Ensure we are pulling a valid array from the incoming change
+                        if (payload.new.risk_factors && Array.isArray(payload.new.risk_factors)) {
+                            riskFactors = payload.new.risk_factors;
+                        }
+                        document.getElementById('clientName').value = payload.new.client_name || '';
+                        document.getElementById('assessmentDate').value = payload.new.assessment_date || '';
+                        document.getElementById('facilityAmount').value = payload.new.facility_amount || '';
+                        renderTable();
+                        updateSummary();
+                    }
+                )
+                .subscribe();
+        }
+
         async function commitToSupabase() {
             const saveBtn = document.getElementById('saveBtn');
             const originalText = saveBtn.innerText;
@@ -586,7 +640,7 @@
                     assessment_date: document.getElementById('assessmentDate').value,
                     facility_amount: document.getElementById('facilityAmount').value,
                     total_score: parseFloat(document.getElementById('totalScore').textContent),
-                    risk_factors: riskFactors // This saves the entire array as JSON
+                    risk_factors: riskFactors // Array sent directly as JSONB
                 };
 
                 const { data, error } = await supabaseClient
@@ -763,11 +817,12 @@
             }
         ];
 
-        // Initialize the application
-        function init() {
-            loadData();
-            renderTable();
-            updateSummary();
+        // --- APP INITIALIZATION ---
+        async function init() {
+            await loadFromSupabase(); // 1. Try to pull latest data from DB
+            subscribeToChanges();     // 2. Start listening for incoming DB updates
+            renderTable();            // 3. Render the UI
+            updateSummary();          
             setupEventListeners();
             
             // Set current date if empty
@@ -811,6 +866,9 @@
         function renderTable() {
             const tbody = document.getElementById('riskTableBody');
             tbody.innerHTML = '';
+
+            // Guard against empty riskFactors array
+            if (!riskFactors || riskFactors.length === 0) return;
 
             riskFactors.forEach((factor, index) => {
                 const row = document.createElement('tr');
@@ -889,11 +947,14 @@
         // Calculate and Update Summary Math and UI
         function updateSummary() {
             let totalScore = 0;
-            riskFactors.forEach(factor => {
-                const selectedOption = factor.options[factor.selectedOption] || factor.options[0];
-                const currentRiskScore = factor.customRiskScore !== null ? factor.customRiskScore : selectedOption.score;
-                totalScore += currentRiskScore * factor.weight;
-            });
+            
+            if (riskFactors && riskFactors.length > 0) {
+                riskFactors.forEach(factor => {
+                    const selectedOption = factor.options[factor.selectedOption] || factor.options[0];
+                    const currentRiskScore = factor.customRiskScore !== null ? factor.customRiskScore : selectedOption.score;
+                    totalScore += currentRiskScore * factor.weight;
+                });
+            }
 
             // Update UI Elements
             const scoreElement = document.getElementById('totalScore');
@@ -1003,7 +1064,7 @@
                 document.getElementById('saveBtn').classList.add('hidden');
                 document.getElementById('cancelBtn').classList.add('hidden');
                 
-                saveData();
+                saveData(); // Save to local browser
                 renderTable();
                 updateSummary();
                 commitToSupabase(); // Fire payload injection to cloud
